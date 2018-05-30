@@ -1,24 +1,23 @@
 'use strict';
 
-const express = require('express');
-const morgan = require('morgan');
-const cors = require('cors');
-// mongoose only
+const { PORT, CLIENT_ORIGIN, DATABASE_URL_MONGO } = require('./config');
+
+const express  = require('express');
+const morgan   = require('morgan');
+const cors     = require('cors');
 const mongoose = require('mongoose');
+const logger   = require('./comm/logger').createLogger(''); // logs to console if no filename
+const app      = express();
+
+const { router: authRouter       } = require('./routers/auth');
+const { router: userRouter       } = require('./routers/users');
+
 mongoose.Promise = global.Promise;
 
-// knex
-const createKnex = require('knex');
-
-const {DATABASE_URL, PORT, CLIENT_ORIGIN} = require('./config');
-
-const app = express();
-
-const { router: userRouter } = require('./users');
-const { router: authRouter, basicStrategy, jwtStrategy } = require('./auth');
-const passport = require('passport');
-passport.use(basicStrategy);
-passport.use(jwtStrategy);
+// master toggle to disable schedules is set as env variable
+if(process.env.ENABLE_SCHEDULES === 'true') { // string 'true' is correct
+  require('./schedules/sample');
+}
 
 app.use(
   morgan(process.env.NODE_ENV === 'production' ? 'common' : 'dev', {
@@ -32,70 +31,44 @@ app.use(
   })
 );
 
-// to prevent CORS issues, particularly with React and Heroku. Might be able to delete with Netlify. Look into security issues.
-app.use((req,res,next)=>{
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'POST, PUT');
-  res.header('Access-Control-Request-Headers');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  next();
-});
-
-// option below is to serve up html from the server, vs client
-app.use(express.static('public'));
-// line below is explicit, but shouldn't be needed
+app.use('/api/auth' ,      authRouter);
+app.use('/api/users',      userRouter);
+app.use(express.static('views'));
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
 });
-
-app.use('/api/users', userRouter);
-app.use('/api/auth/', authRouter);app.use('/api/auth/', authRouter);
 app.use('*', (req, res) => {
-  return res.status(404).json({ message: 'Not Found' });
+  res.sendFile(__dirname + '/views/index.html');
+  // return res.status(404).json({ message: 'Not Found' });
 });
 
 let server; // declare `server` here, then runServer assigns a value.
-let knex = null;
 
-// MONGO !!!!!
-function dbConnect(url = DATABASE_URL) {
-  return mongoose.connect(url, {useMongoClient: true})
-    .catch(err => {
-      console.error('Mongoose failed to connect');
-      console.error(err);
-    });
-}
-
-// POSTGRES !!!!!
-// function dbConnect(url = DATABASE_URL) {
-//   knex = createKnex({
-//     client: 'pg',
-//     connection: url
-//   });
-// }
-
-function runServer(port=PORT) {
+function runServer(port=PORT, url = DATABASE_URL_MONGO) {
   return new Promise((resolve, reject) => {
-    server = app
-      .listen(port, () => { // always
-        console.log(`Your app is listening on port ${port}`);
-        resolve();
-      })
-      .on('error', err => {
-        mongoose.disconnect(); // only if mongoose
-        console.error('Express failed to start');
-        reject(err);
-      });
+    mongoose.connect(url, { useMongoClient: true }, err => {
+      if (err) {
+        logger.error(`Mongoose failed to connect: ${err}`);
+        return reject(err);
+      }
+      server = app
+        .listen(port, () => { // always
+          const now = new Date();
+          logger.info(`It's ${now} and your app is listening on port ${port}`);
+          resolve();
+        })
+        .on('error', err => {
+          logger.error(`Express failed to start ${err}`);
+        });
+    });
   });
 }
 
-// close the server, and return a promise. we'll handle the promise in integration tests.
-// MONGO !!!!!
-function closeServer() {
+function closeMongoServer() {
   return mongoose.disconnect()
-    .then(() => { // mongoose only. why no error catch here?
+    .then(() => {
       return new Promise((resolve, reject) => {
-        console.log('Closing server');
+        logger.info('Closing server');
         server.close(err => {
           if (err) {
             return reject(err);
@@ -106,15 +79,9 @@ function closeServer() {
     });
 }
 
-// POSTGRES !!!!!
-// function closeServer() {
-//   return knex.destroy();
-// }
-
 // if called directly, vs 'required as module'
 if (require.main === module) { // i.e. if server.js is called directly (so indirect calls, such as testing, don't run this)
-  dbConnect();
-  runServer().catch(err => console.error(err));
+  runServer().catch(err => logger.error(err));
 }
 
-module.exports = {app, runServer, closeServer};
+module.exports = { app, runServer, closeMongoServer };
