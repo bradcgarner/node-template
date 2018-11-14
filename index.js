@@ -34,6 +34,10 @@ app.use(
 app.use('/api/auth' ,      authRouter);
 app.use('/api/users',      userRouter);
 app.use(express.static('views'));
+app.use(express.static('files'));
+app.get('/images/:filename', (req, res) => {
+  res.sendFile(__dirname + `/views/static/images/${req.params.filename}`);
+});
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
 });
@@ -45,8 +49,13 @@ app.use('*', (req, res) => {
 let server; // declare `server` here, then runServer assigns a value.
 
 function runServer(port=PORT, url = DATABASE_URL_MONGO) {
+  const mongoSettings = {
+    useMongoClient: true, 
+    reconnectTries: Number.MAX_VALUE, // sets how many times to try reconnecting
+    reconnectInterval: 1000 // sets the delay between every retry (milliseconds)
+  };
   return new Promise((resolve, reject) => {
-    mongoose.connect(url, { useMongoClient: true }, err => {
+    mongoose.connect(url, mongoSettings, err => {
       if (err) {
         logger.error(`Mongoose failed to connect: ${err}`);
         return reject(err);
@@ -54,7 +63,7 @@ function runServer(port=PORT, url = DATABASE_URL_MONGO) {
       server = app
         .listen(port, () => { // always
           const now = new Date();
-          logger.info(`It's ${now} and your app is listening on port ${port}`);
+          logger.info(`As of ${now}, your app is listening on port ${port}. Mode: ${process.env.NODE_ENV}. Database: ${process.env.DB_MODE}`);
           resolve();
         })
         .on('error', err => {

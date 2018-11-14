@@ -10,11 +10,8 @@ const { jwtStrategy } = require('./auth/jwt-strategy');
 // project-specific imports
 const { loggingFile } = require('../config');
 const knex            = require('../db-sql');
-const logger          = require('../comm/logger').createLogger(adminFile); // logs to a file
+const logger          = require('../comm/logger').createLogger(loggingFile);
 const { Sample }      = require('../models/sample');
-// helper function imports
-const dateTime        = require('../helpers/date-time');
-const helpers         = require('../helpers/helpers-lib');
 // use
 router.use(jsonParser);
 router.use((req, res, next)=>jwtStrategy(req, res, next));

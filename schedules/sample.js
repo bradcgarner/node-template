@@ -3,7 +3,7 @@
 const { loggingFile, sampleScheduleRule } = require('../config');
 
 const schedule =   require('node-schedule');
-const logger =     require('../comm/logger').createLogger(loggingFile); // logs to a file
+const logger =     require('../comm/logger').createLogger(loggingFile);
 const knex =       require('../db-sql');
 const { Sample } = require('../models/sample');
 

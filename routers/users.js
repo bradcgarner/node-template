@@ -12,16 +12,15 @@ const { jwtStrategy,
 const { respondToError }= require('../comm/responses');
 const { userFile }    = require('../config');
 const knex            = require('../db-sql');
-const logger          = require('../comm/logger').createLogger(userFile); // logs to a file
+const logger          = require('../comm/logger').createLogger(userFile);
 // helper function imports
-const { keys }        = require('../helpers/keys');
 const {
   getKeyArray,
-  isObjectLiteral
-} = require('../helpers/lib');
-const { 
-  formatReqBodyForKnex, 
-} = require('../helpers/db');
+  isObjectLiteral,
+  formatReqBodyForKnex
+} = require('conjunction-junction');
+const { keys }        = require('../helpers/keys');
+
 // use
 router.use(jsonParser);
 router.use((req, res, next)=>jwtStrategy(req, res, next));

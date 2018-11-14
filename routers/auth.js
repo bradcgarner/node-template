@@ -1,17 +1,17 @@
 'use strict';
 
 const { JWT_SECRET, JWT_EXPIRY, authFile } = require('../config');
-const logger = require('../comm/logger').createLogger(authFile); // logs to a file
+const logger = require('../comm/logger').createLogger(authFile);
 const express           = require('express');
 const router            = express.Router();
 const bcrypt            = require('bcryptjs');const { sendPwReset }   = require('../comm/notifications');
 const jwt               = require('jsonwebtoken');
 const generator         = require('generate-password');
-const { respondToError }= require('../comm/responses');
 const { getKeyArray,
-  isPrimitiveNumber }   = require('../helpers/lib');
-const { keys }          = require('../helpers/keys');
+  isPrimitiveNumber }   = require('conjunction-junction');
 const bodyParser        = require('body-parser');
+const { respondToError }= require('../comm/responses');
+const { keys }          = require('../helpers/keys');
 const knex              = require('../db-sql');
 router.use(bodyParser.json());
 
